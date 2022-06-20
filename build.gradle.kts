@@ -14,7 +14,7 @@ repositories {
 dependencies {
     compileOnly("org.keycloak:keycloak-core:18.0.0")
     compileOnly("org.keycloak:keycloak-server-spi:18.0.0")
-    compileOnly("org.jboss.logging:jboss-logging")
+    compileOnly("org.jboss.logging:jboss-logging:3.5.0.Final")
     compileOnly("org.hibernate.javax.persistence:hibernate-jpa-2.1-api:1.0.0.Final")
     compileOnly("org.jboss.spec.javax.ejb:jboss-ejb-api_3.2_spec:1.0.0.Final")
 
