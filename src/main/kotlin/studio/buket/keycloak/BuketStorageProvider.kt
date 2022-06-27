@@ -10,61 +10,69 @@ import org.keycloak.models.UserModel
 import org.keycloak.storage.UserStorageProvider
 import org.keycloak.storage.user.UserLookupProvider
 import org.keycloak.storage.user.UserQueryProvider
+import studio.buket.keycloak.dao.UserDao
+import java.util.logging.Logger
 
-class BuketStorageProvider : UserStorageProvider, UserLookupProvider, CredentialInputValidator, UserQueryProvider {
-    private lateinit var model: ComponentModel
-    private lateinit var session: KeycloakSession
-
-    fun setModel(model: ComponentModel) {
-        this.model = model
-    }
-
-    fun setSession(session: KeycloakSession) {
-        this.session = session
-    }
+class BuketStorageProvider(
+    private val model: ComponentModel,
+    private val session: KeycloakSession,
+    private val userDao: UserDao,
+) : UserStorageProvider, UserLookupProvider, CredentialInputValidator, UserQueryProvider {
 
     override fun close() {
-        TODO("Not yet implemented")
+        logger.info("close()")
+        this.userDao.close()
     }
 
     @Deprecated("Deprecated in Java")
     override fun getUserById(id: String?, realm: RealmModel?): UserModel {
+        logger.info("getUserById()")
         TODO("Not yet implemented")
     }
 
     @Deprecated("Deprecated in Java")
     override fun getUserByUsername(username: String?, realm: RealmModel?): UserModel {
+        logger.info("getUserByUsername()")
         TODO("Not yet implemented")
     }
 
     @Deprecated("Deprecated in Java")
     override fun getUserByEmail(email: String?, realm: RealmModel?): UserModel {
+        logger.info("getUserByEmail()")
         TODO("Not yet implemented")
     }
 
     override fun supportsCredentialType(credentialType: String?): Boolean {
+        logger.info("supportsCredentialType()")
         TODO("Not yet implemented")
     }
 
     override fun isConfiguredFor(realm: RealmModel?, user: UserModel?, credentialType: String?): Boolean {
+        logger.info("isConfiguredFor()")
         TODO("Not yet implemented")
     }
 
     override fun isValid(realm: RealmModel?, user: UserModel?, credentialInput: CredentialInput?): Boolean {
+        logger.info("isValid()")
         TODO("Not yet implemented")
     }
 
     @Deprecated("Deprecated in Java")
     override fun getUsers(realm: RealmModel?): MutableList<UserModel> {
+        logger.info("getUsers() 1")
         TODO("Not yet implemented")
     }
 
     @Deprecated("Deprecated in Java")
     override fun getUsers(realm: RealmModel?, firstResult: Int, maxResults: Int): MutableList<UserModel> {
+        logger.info("getUsers() 2")
         TODO("Not yet implemented")
     }
 
-    override fun searchForUser(search: String?, realm: RealmModel?): MutableList<UserModel> = mutableListOf()
+    override fun searchForUser(search: String?, realm: RealmModel?): MutableList<UserModel> {
+        logger.info("searchForUser()")
+        return mutableListOf()
+    }
 
     @Deprecated("Deprecated in Java")
     override fun searchForUser(
@@ -73,11 +81,14 @@ class BuketStorageProvider : UserStorageProvider, UserLookupProvider, Credential
         firstResult: Int,
         maxResults: Int
     ): MutableList<UserModel> {
+        logger.info("searchForUser() 1")
         TODO("Not yet implemented")
     }
 
-    override fun searchForUser(params: MutableMap<String, String>?, realm: RealmModel?): MutableList<UserModel> =
-        mutableListOf()
+    override fun searchForUser(params: MutableMap<String, String>?, realm: RealmModel?): MutableList<UserModel> {
+        logger.info("searchForUser() 2")
+        return mutableListOf()
+    }
 
     @Deprecated("Deprecated in Java", ReplaceWith("mutableListOf()"))
     override fun searchForUser(
@@ -87,18 +98,31 @@ class BuketStorageProvider : UserStorageProvider, UserLookupProvider, Credential
         maxResults: Int
     ): MutableList<UserModel> = mutableListOf()
 
-    override fun getGroupMembers(realm: RealmModel?, group: GroupModel?): MutableList<UserModel> = mutableListOf()
+    override fun getGroupMembers(realm: RealmModel?, group: GroupModel?): MutableList<UserModel> {
+        logger.info("getGroupMembers() 1")
+        return mutableListOf()
+    }
 
     override fun getGroupMembers(
         realm: RealmModel?,
         group: GroupModel?,
         firstResult: Int,
         maxResults: Int
-    ): MutableList<UserModel> = mutableListOf()
+    ): MutableList<UserModel> {
+        logger.info("getGroupMembers() 2")
+        return mutableListOf()
+    }
 
     override fun searchForUserByUserAttribute(
         attrName: String?,
         attrValue: String?,
         realm: RealmModel?
-    ): MutableList<UserModel> = mutableListOf()
+    ): MutableList<UserModel> {
+        logger.info("searchForUserByUserAttribute()")
+        return mutableListOf()
+    }
+
+    companion object {
+        private val logger = Logger.getLogger(BuketStorageProvider::class.java.name)
+    }
 }
