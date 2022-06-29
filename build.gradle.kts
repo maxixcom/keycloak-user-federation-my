@@ -19,7 +19,7 @@ dependencies {
 //    compileOnly("org.hibernate:hibernate-core:5.6.5.Final")
 //    compileOnly("org.hibernate.javax.persistence:hibernate-jpa-2.1-api:1.0.2.Final")
     compileOnly("org.jboss.spec.javax.ejb:jboss-ejb-api_3.2_spec:1.0.0.Final")
-    compileOnly("org.apache.commons:commons-lang3:3.12.0")
+//    compileOnly("org.apache.commons:commons-lang3:3.12.0")
 
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("org.postgresql:postgresql:42.4.0")
