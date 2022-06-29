@@ -1,7 +1,8 @@
 package studio.buket.keycloak;
 
 import org.apache.commons.lang3.StringUtils;
-import org.hibernate.jpa.HibernatePersistenceProvider;
+import org.jboss.logging.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.component.ComponentValidationException;
@@ -12,48 +13,33 @@ import org.keycloak.provider.ProviderConfigurationBuilder;
 import org.keycloak.storage.UserStorageProviderFactory;
 import studio.buket.keycloak.dao.UserDao;
 import studio.buket.keycloak.dao.UserDaoImpl;
+import studio.buket.keycloak.persistence.DataSourceConfig;
+import studio.buket.keycloak.persistence.DataSourceProvider;
 
-import javax.persistence.EntityManagerFactory;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class BuketUserStorageProviderFactory implements UserStorageProviderFactory<BuketStorageProvider> {
-    public static final int PORT_LIMIT = 65535;
-    public static final String DB_CONNECTION_NAME_KEY = "db:connectionName";
-    public static final String DB_HOST_KEY = "db:host";
-    public static final String DB_DATABASE_KEY = "db:database";
+    private static final Logger logger = Logger.getLogger(BuketUserStorageProviderFactory.class);
+
+    public static final String DB_JDBC_URL_KEY = "db:url";
     public static final String DB_USERNAME_KEY = "db:username";
     public static final String DB_PASSWORD_KEY = "db:password";
-    public static final String DB_PORT_KEY = "db:port";
 
+    private Map<String, DataSourceProvider> providerPerInstance = new ConcurrentHashMap<>();
 
     protected static final List<ProviderConfigProperty> configMetadata;
 
-    Map<String, EntityManagerFactory> entityManagerFactories = new HashMap<>();
-
     static {
         configMetadata = ProviderConfigurationBuilder.create()
-                // Connection Name
-                .property().name(DB_CONNECTION_NAME_KEY)
-                .type(ProviderConfigProperty.STRING_TYPE)
-                .label("Connection Name")
-                .defaultValue("")
-                .helpText("Name of the connection, can be chosen individually. Enables connection sharing between providers if the same name is provided. Overrides currently saved connection properties.")
-                .add()
-
-                // Connection Host
-                .property().name(DB_HOST_KEY)
+                // JDBC connection string
+                .property().name(DB_JDBC_URL_KEY)
                 .type(ProviderConfigProperty.STRING_TYPE)
                 .label("Database Host")
-                .defaultValue("localhost")
-                .helpText("Host of the connection")
-                .add()
-
-                // Connection Database
-                .property().name(DB_DATABASE_KEY)
-                .type(ProviderConfigProperty.STRING_TYPE)
-                .label("Database Name")
+                .defaultValue("jdbc:postgresql://localhost:5432/database")
+                .helpText("JDBC connection url")
                 .add()
 
                 // DB Username
@@ -70,30 +56,14 @@ public class BuketUserStorageProviderFactory implements UserStorageProviderFacto
                 .defaultValue("postgres")
                 .add()
 
-                // DB Port
-                .property().name(DB_PORT_KEY)
-                .type(ProviderConfigProperty.STRING_TYPE)
-                .label("Database Port")
-                .defaultValue("5432")
-                .add()
                 .build();
-
     }
 
     @Override
     public void validateConfiguration(KeycloakSession session, RealmModel realm, ComponentModel config) throws ComponentValidationException {
         MultivaluedHashMap<String, String> configMap = config.getConfig();
-        if (StringUtils.isBlank(configMap.getFirst(DB_CONNECTION_NAME_KEY))) {
-            throw new ComponentValidationException("Connection name empty.");
-        }
-        if (StringUtils.isBlank(configMap.getFirst(DB_HOST_KEY))) {
-            throw new ComponentValidationException("Database host empty.");
-        }
-        if (!StringUtils.isNumeric(configMap.getFirst(DB_PORT_KEY)) || Long.parseLong(configMap.getFirst(DB_PORT_KEY)) > PORT_LIMIT) {
-            throw new ComponentValidationException("Invalid port. (Empty or NaN)");
-        }
-        if (StringUtils.isBlank(configMap.getFirst(DB_DATABASE_KEY))) {
-            throw new ComponentValidationException("Database name empty.");
+        if (StringUtils.isBlank(configMap.getFirst(DB_JDBC_URL_KEY))) {
+            throw new ComponentValidationException("JDBC connection url is empty.");
         }
         if (StringUtils.isBlank(configMap.getFirst(DB_USERNAME_KEY))) {
             throw new ComponentValidationException("Database username empty.");
@@ -110,38 +80,59 @@ public class BuketUserStorageProviderFactory implements UserStorageProviderFacto
 
     @Override
     public BuketStorageProvider create(KeycloakSession session, ComponentModel model) {
-        Map<String, Object> properties = new HashMap<>();
-        String dbConnectionName = model.getConfig().getFirst(DB_CONNECTION_NAME_KEY);
-        EntityManagerFactory entityManagerFactory = entityManagerFactories.get(dbConnectionName);
-        if (entityManagerFactory == null) {
-            MultivaluedHashMap<String, String> config = model.getConfig();
-            properties.put("hibernate.connection.driver_class", "com.mysql.cj.jdbc.Driver");
-            properties.put("hibernate.connection.url",
-                    String.format("jdbc:mysql://%s:%s/%s",
-                            config.getFirst(DB_HOST_KEY),
-                            config.getFirst(DB_PORT_KEY),
-                            config.getFirst(DB_DATABASE_KEY)));
-            properties.put("hibernate.connection.username", config.getFirst(DB_USERNAME_KEY));
-            properties.put("hibernate.connection.password", config.getFirst(DB_PASSWORD_KEY));
-            properties.put("hibernate.show-sql", "true");
-            properties.put("hibernate.archive.autodetection", "class, hbm");
-            properties.put("hibernate.hbm2ddl.auto", "update");
-            properties.put("hibernate.connection.autocommit", "true");
+        DataSourceProvider dataSourceProvider = providerPerInstance.computeIfAbsent(
+                model.getId(),
+                id -> createDataSourceProvider(model)
+        );
 
-            entityManagerFactory = new HibernatePersistenceProvider()
-                    .createContainerEntityManagerFactory(
-                            new BuketPersistenceUnitInfo("userstorage"),
-                            properties
-                    );
-        }
-        UserDao userDao = new UserDaoImpl(entityManagerFactory.createEntityManager());
+        UserDao userDao = new UserDaoImpl(dataSourceProvider);
 
         return new BuketStorageProvider(model, session, userDao);
+    }
+
+    @NotNull
+    private DataSourceProvider createDataSourceProvider(ComponentModel model) {
+        DataSourceConfig config = new DataSourceConfig();
+        config.setName(model.getId());
+        config.setJdbcUrl(model.get(DB_JDBC_URL_KEY));
+        config.setUser(model.get(DB_USERNAME_KEY));
+        config.setPassword(model.get(DB_PASSWORD_KEY));
+        return new DataSourceProvider(config);
+    }
+
+    @Override
+    public void close() {
+        logger.info("Closing data sources");
+        providerPerInstance.forEach((key, value) -> {
+            logger.infof("Closing data source: %s", key);
+            try {
+                value.close();
+            } catch (Exception e) {
+                logger.errorf("Error closing data source: %s", key);
+            }
+        });
+    }
+
+    @Override
+    public void onUpdate(KeycloakSession session, RealmModel realm, ComponentModel oldModel, ComponentModel newModel) {
+        logger.info("Update configuration " + oldModel.getId());
+        providerPerInstance.computeIfPresent(oldModel.getId(), (key, oldValue) -> {
+            oldValue.close();
+            return createDataSourceProvider(newModel);
+        });
+    }
+
+    @Override
+    public void preRemove(KeycloakSession session, RealmModel realm, ComponentModel model) {
+        logger.warn("Remove configuration " + model.getId());
+        Optional.ofNullable(providerPerInstance.remove(model.getId()))
+                .ifPresent(DataSourceProvider::close);
     }
 
     @Override
     public String getId() {
         return "buket-studio-user-provider";
     }
+
 
 }

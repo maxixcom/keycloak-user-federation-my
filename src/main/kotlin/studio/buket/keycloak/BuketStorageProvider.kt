@@ -11,6 +11,7 @@ import org.keycloak.storage.UserStorageProvider
 import org.keycloak.storage.user.UserLookupProvider
 import org.keycloak.storage.user.UserQueryProvider
 import studio.buket.keycloak.dao.UserDao
+import java.util.UUID
 import java.util.logging.Logger
 
 class BuketStorageProvider(
@@ -21,7 +22,6 @@ class BuketStorageProvider(
 
     override fun close() {
         logger.info("close()")
-        this.userDao.close()
     }
 
     @Deprecated("Deprecated in Java")
@@ -96,7 +96,11 @@ class BuketStorageProvider(
         realm: RealmModel?,
         firstResult: Int,
         maxResults: Int
-    ): MutableList<UserModel> = mutableListOf()
+    ): MutableList<UserModel> {
+        logger.info("searchForUser() 3")
+        userDao.findUserById(UUID.randomUUID())
+        return mutableListOf()
+    }
 
     override fun getGroupMembers(realm: RealmModel?, group: GroupModel?): MutableList<UserModel> {
         logger.info("getGroupMembers() 1")

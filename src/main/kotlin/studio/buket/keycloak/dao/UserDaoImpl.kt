@@ -1,21 +1,14 @@
 package studio.buket.keycloak.dao
 
 import studio.buket.keycloak.models.User
-import javax.persistence.EntityManager
+import studio.buket.keycloak.persistence.DataSourceProvider
+import java.util.UUID
 
 class UserDaoImpl(
-    private val entityManager: EntityManager
+    private val dataSourceProvider: DataSourceProvider
 ) : UserDao {
-    override fun updateUser(user: User): User {
-        val transaction = entityManager.transaction
-        transaction.begin()
-        entityManager.merge(user)
-        transaction.commit()
-
-        return user
-    }
-
-    override fun close() {
-        entityManager.close()
+    override fun findUserById(id: UUID): User? {
+        val dataSource = dataSourceProvider.dataSource
+        return null
     }
 }
