@@ -78,12 +78,20 @@ class BuketStorageProvider(
         TODO("Not yet implemented")
     }
 
-    override fun searchForUser(search: String?, realm: RealmModel?): MutableList<UserModel> {
+    override fun searchForUser(search: String?, realm: RealmModel): MutableList<UserModel> {
         logger.info("searchForUser()")
-        return mutableListOf()
+
+        val searchForUser = storageProviderUseCaseBuilder.newSearchForUser()
+        val request = SearchForUser.RequestBySearchString(
+            realm = realm,
+            search = search
+        )
+
+        return searchForUser.search(request).users
+            .toUserAdapter(session, realm, model)
+            .toMutableList()
     }
 
-    @Deprecated("Deprecated in Java")
     override fun searchForUser(
         search: String?,
         realm: RealmModel,
@@ -93,37 +101,51 @@ class BuketStorageProvider(
         logger.info("searchForUser() 1")
 
         val searchForUser = storageProviderUseCaseBuilder.newSearchForUser()
-        val response = searchForUser.search(
-            SearchForUser.RequestPageBySearchString(
-                realm = realm,
-                search = search,
-                firstResult = firstResult,
-                maxResults = maxResults
-            )
+        val request = SearchForUser.RequestPageBySearchString(
+            realm = realm,
+            search = search,
+            firstResult = firstResult,
+            maxResults = maxResults
         )
-        return response.users.toUserAdapter(session, realm, model)
+
+        return searchForUser.search(request).users
+            .toUserAdapter(session, realm, model)
             .toMutableList()
     }
 
-    override fun searchForUser(params: MutableMap<String, String>?, realm: RealmModel?): MutableList<UserModel> {
+    override fun searchForUser(params: MutableMap<String, String>, realm: RealmModel): MutableList<UserModel> {
         logger.info("searchForUser() 2")
-        return mutableListOf()
+
+        val searchForUser = storageProviderUseCaseBuilder.newSearchForUser()
+        val request = SearchForUser.RequestByParams(
+            realm = realm,
+            params = params
+        )
+
+        return searchForUser.search(request).users
+            .toUserAdapter(session, realm, model)
+            .toMutableList()
     }
 
-    @Deprecated("Deprecated in Java", ReplaceWith("mutableListOf()"))
     override fun searchForUser(
-        params: MutableMap<String, String>?,
-        realm: RealmModel?,
+        params: MutableMap<String, String>,
+        realm: RealmModel,
         firstResult: Int,
         maxResults: Int
     ): MutableList<UserModel> {
         logger.info("searchForUser() 3")
 
-//        logger.info("params: $params")
-//        logger.infof("realm: %s, firstResult: %d, maxResults: %d", realm, firstResult, maxResults)
-//
-//        userDao.findUserById(UUID.randomUUID())
-        return mutableListOf()
+        val searchForUser = storageProviderUseCaseBuilder.newSearchForUser()
+        val request = SearchForUser.RequestPageByParams(
+            realm = realm,
+            params = params,
+            firstResult = firstResult,
+            maxResults = maxResults
+        )
+
+        return searchForUser.search(request).users
+            .toUserAdapter(session, realm, model)
+            .toMutableList()
     }
 
     override fun getGroupMembers(realm: RealmModel?, group: GroupModel?): MutableList<UserModel> {
