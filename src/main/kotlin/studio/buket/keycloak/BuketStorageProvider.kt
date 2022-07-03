@@ -1,5 +1,6 @@
 package studio.buket.keycloak
 
+import org.jboss.logging.Logger
 import org.keycloak.component.ComponentModel
 import org.keycloak.credential.CredentialInput
 import org.keycloak.credential.CredentialInputValidator
@@ -7,17 +8,18 @@ import org.keycloak.models.GroupModel
 import org.keycloak.models.KeycloakSession
 import org.keycloak.models.RealmModel
 import org.keycloak.models.UserModel
+import org.keycloak.storage.StorageId
 import org.keycloak.storage.UserStorageProvider
 import org.keycloak.storage.user.UserLookupProvider
 import org.keycloak.storage.user.UserQueryProvider
-import studio.buket.keycloak.dao.UserDao
-import java.util.UUID
-import java.util.logging.Logger
+import studio.buket.keycloak.model.toUserAdapter
+import studio.buket.keycloak.service.SearchForUser
+import studio.buket.keycloak.service.StorageProviderUseCaseBuilder
 
 class BuketStorageProvider(
     private val model: ComponentModel,
     private val session: KeycloakSession,
-    private val userDao: UserDao,
+    private val storageProviderUseCaseBuilder: StorageProviderUseCaseBuilder,
 ) : UserStorageProvider, UserLookupProvider, CredentialInputValidator, UserQueryProvider {
 
     override fun close() {
@@ -25,21 +27,28 @@ class BuketStorageProvider(
     }
 
     @Deprecated("Deprecated in Java")
-    override fun getUserById(id: String?, realm: RealmModel?): UserModel {
+    override fun getUserById(id: String?, realm: RealmModel): UserModel? {
         logger.info("getUserById()")
-        TODO("Not yet implemented")
+        val getUserByUsername = storageProviderUseCaseBuilder.newGetUserByUsername()
+        val storageId = StorageId(id)
+        return getUserByUsername.execute(storageId.externalId)
+            ?.toUserAdapter(session, realm, model)
     }
 
     @Deprecated("Deprecated in Java")
-    override fun getUserByUsername(username: String?, realm: RealmModel?): UserModel {
+    override fun getUserByUsername(username: String, realm: RealmModel): UserModel? {
         logger.info("getUserByUsername()")
-        TODO("Not yet implemented")
+        val getUserByUsername = storageProviderUseCaseBuilder.newGetUserByUsername()
+        return getUserByUsername.execute(username)
+            ?.toUserAdapter(session, realm, model)
     }
 
     @Deprecated("Deprecated in Java")
-    override fun getUserByEmail(email: String?, realm: RealmModel?): UserModel {
+    override fun getUserByEmail(email: String, realm: RealmModel): UserModel? {
         logger.info("getUserByEmail()")
-        TODO("Not yet implemented")
+        val getUserByEmail = storageProviderUseCaseBuilder.newGetUserByEmail()
+        return getUserByEmail.execute(email)
+            ?.toUserAdapter(session, realm, model)
     }
 
     override fun supportsCredentialType(credentialType: String?): Boolean {
@@ -77,12 +86,23 @@ class BuketStorageProvider(
     @Deprecated("Deprecated in Java")
     override fun searchForUser(
         search: String?,
-        realm: RealmModel?,
+        realm: RealmModel,
         firstResult: Int,
         maxResults: Int
     ): MutableList<UserModel> {
         logger.info("searchForUser() 1")
-        TODO("Not yet implemented")
+
+        val searchForUser = storageProviderUseCaseBuilder.newSearchForUser()
+        val response = searchForUser.search(
+            SearchForUser.RequestPageBySearchString(
+                realm = realm,
+                search = search,
+                firstResult = firstResult,
+                maxResults = maxResults
+            )
+        )
+        return response.users.toUserAdapter(session, realm, model)
+            .toMutableList()
     }
 
     override fun searchForUser(params: MutableMap<String, String>?, realm: RealmModel?): MutableList<UserModel> {
@@ -98,7 +118,11 @@ class BuketStorageProvider(
         maxResults: Int
     ): MutableList<UserModel> {
         logger.info("searchForUser() 3")
-        userDao.findUserById(UUID.randomUUID())
+
+//        logger.info("params: $params")
+//        logger.infof("realm: %s, firstResult: %d, maxResults: %d", realm, firstResult, maxResults)
+//
+//        userDao.findUserById(UUID.randomUUID())
         return mutableListOf()
     }
 
