@@ -23,11 +23,24 @@ class SearchForUserImpl(
                 is SearchForUser.RequestPageByParams -> requestPageByParams(request)
                 is SearchForUser.RequestPageBySearchString -> requestPageBySearchString(request)
                 is SearchForUser.RequestBySearchString -> requestBySearchString(request)
+                is SearchForUser.RequestPageByUserAttribute -> requestByUserAttribute(request)
             }
 
             query.map(User::wrapRow).toList()
         }
         return SearchForUser.Response(result)
+    }
+
+    private fun requestByUserAttribute(request: SearchForUser.RequestPageByUserAttribute): Query {
+        val params = mutableMapOf(
+            request.attrName to request.attrValue
+        )
+        return this.requestByParams(
+            SearchForUser.RequestByParams(
+                realm = request.realm,
+                params = params,
+            )
+        )
     }
 
     private fun requestPageBySearchString(request: SearchForUser.RequestPageBySearchString): Query {

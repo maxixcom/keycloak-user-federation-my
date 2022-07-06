@@ -32,6 +32,12 @@ interface SearchForUser {
         val maxResults: Int,
     ) : Request(realm)
 
+    class RequestPageByUserAttribute(
+        realm: RealmModel,
+        val attrName: String,
+        val attrValue: String,
+    ) : Request(realm)
+
     data class Response(
         val users: List<User>
     )

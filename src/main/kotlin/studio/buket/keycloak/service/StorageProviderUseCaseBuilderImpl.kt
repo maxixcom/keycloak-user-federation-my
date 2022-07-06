@@ -8,4 +8,6 @@ class StorageProviderUseCaseBuilderImpl(
     override fun newGetUserByUsername(): GetUserByUsername = GetUserByUsernameImpl(db)
     override fun newGetUserByEmail(): GetUserByEmail = GetUserByEmailImpl(db)
     override fun newSearchForUser(): SearchForUser = SearchForUserImpl(db)
+    override fun newGetUsers(): GetUsers = GetUsersImpl(db)
+    override fun newValidatePassword(): ValidatePassword = ValidatePasswordImpl(db)
 }
