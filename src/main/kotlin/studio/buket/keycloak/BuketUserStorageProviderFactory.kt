@@ -8,10 +8,9 @@ import org.keycloak.models.RealmModel
 import org.keycloak.provider.ProviderConfigProperty
 import org.keycloak.provider.ProviderConfigurationBuilder
 import org.keycloak.storage.UserStorageProviderFactory
-import studio.buket.keycloak.dao.UserDao
-import studio.buket.keycloak.dao.UserDaoImpl
 import studio.buket.keycloak.persistence.DataSourceConfig
 import studio.buket.keycloak.persistence.DataSourceProvider
+import studio.buket.keycloak.service.StorageProviderUseCaseBuilderImpl
 import java.util.concurrent.ConcurrentHashMap
 
 class BuketUserStorageProviderFactory : UserStorageProviderFactory<BuketStorageProvider> {
@@ -33,9 +32,11 @@ class BuketUserStorageProviderFactory : UserStorageProviderFactory<BuketStorageP
             createDataSourceProvider(model)
         }
 
-        val userDao: UserDao = UserDaoImpl(dataSourceProvider)
-
-        return BuketStorageProvider(model, session, userDao)
+        return BuketStorageProvider(
+            model,
+            session,
+            StorageProviderUseCaseBuilderImpl(dataSourceProvider.database)
+        )
     }
 
     override fun close() {

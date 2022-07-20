@@ -1,105 +1,194 @@
 package studio.buket.keycloak
 
+import org.jboss.logging.Logger
 import org.keycloak.component.ComponentModel
 import org.keycloak.credential.CredentialInput
 import org.keycloak.credential.CredentialInputValidator
 import org.keycloak.models.GroupModel
 import org.keycloak.models.KeycloakSession
 import org.keycloak.models.RealmModel
+import org.keycloak.models.UserCredentialModel
 import org.keycloak.models.UserModel
+import org.keycloak.models.credential.PasswordCredentialModel
+import org.keycloak.storage.StorageId
 import org.keycloak.storage.UserStorageProvider
 import org.keycloak.storage.user.UserLookupProvider
 import org.keycloak.storage.user.UserQueryProvider
-import studio.buket.keycloak.dao.UserDao
-import java.util.UUID
-import java.util.logging.Logger
+import studio.buket.keycloak.model.toUserAdapter
+import studio.buket.keycloak.service.GetUsers
+import studio.buket.keycloak.service.SearchForUser
+import studio.buket.keycloak.service.StorageProviderUseCaseBuilder
+import studio.buket.keycloak.service.ValidatePassword
 
 class BuketStorageProvider(
     private val model: ComponentModel,
     private val session: KeycloakSession,
-    private val userDao: UserDao,
+    private val storageProviderUseCaseBuilder: StorageProviderUseCaseBuilder,
 ) : UserStorageProvider, UserLookupProvider, CredentialInputValidator, UserQueryProvider {
 
     override fun close() {
         logger.info("close()")
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun getUserById(id: String?, realm: RealmModel?): UserModel {
+    override fun getUserById(id: String?, realm: RealmModel): UserModel? {
         logger.info("getUserById()")
-        TODO("Not yet implemented")
+
+        val getUserByUsername = storageProviderUseCaseBuilder.newGetUserByUsername()
+        val storageId = StorageId(id)
+        return getUserByUsername.execute(storageId.externalId)
+            ?.toUserAdapter(session, realm, model)
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun getUserByUsername(username: String?, realm: RealmModel?): UserModel {
+    override fun getUserByUsername(username: String, realm: RealmModel): UserModel? {
         logger.info("getUserByUsername()")
-        TODO("Not yet implemented")
+
+        val getUserByUsername = storageProviderUseCaseBuilder.newGetUserByUsername()
+        return getUserByUsername.execute(username)
+            ?.toUserAdapter(session, realm, model)
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun getUserByEmail(email: String?, realm: RealmModel?): UserModel {
+    override fun getUserByEmail(email: String, realm: RealmModel): UserModel? {
         logger.info("getUserByEmail()")
-        TODO("Not yet implemented")
+
+        val getUserByEmail = storageProviderUseCaseBuilder.newGetUserByEmail()
+        return getUserByEmail.execute(email)
+            ?.toUserAdapter(session, realm, model)
     }
 
     override fun supportsCredentialType(credentialType: String?): Boolean {
         logger.info("supportsCredentialType()")
-        TODO("Not yet implemented")
+
+        return PasswordCredentialModel.TYPE == credentialType
     }
 
     override fun isConfiguredFor(realm: RealmModel?, user: UserModel?, credentialType: String?): Boolean {
         logger.info("isConfiguredFor()")
-        TODO("Not yet implemented")
+
+        return supportsCredentialType(credentialType)
     }
 
-    override fun isValid(realm: RealmModel?, user: UserModel?, credentialInput: CredentialInput?): Boolean {
+    override fun isValid(realm: RealmModel, user: UserModel, credentialInput: CredentialInput): Boolean {
         logger.info("isValid()")
-        TODO("Not yet implemented")
+
+        if (!supportsCredentialType(credentialInput?.type) || credentialInput !is UserCredentialModel) {
+            return false
+        }
+
+        val credentialModel: UserCredentialModel = credentialInput
+//        TODO("validate user password - not implemented yet")
+        // Need to add authentication logic
+
+        println("xxxxxxxxxxxxxxxxxxxx")
+        println(credentialModel.value)
+        println(credentialModel.credentialId)
+        println(credentialModel.challengeResponse)
+
+        println(user?.username)
+        println(user?.email)
+        println("^^^^^^^^^^^^^^^^^^^^")
+
+        val validatePassword = storageProviderUseCaseBuilder.newValidatePassword()
+
+        return validatePassword.execute(
+            ValidatePassword.Request(
+                user = user,
+                credentialModel = credentialModel
+            )
+        )
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun getUsers(realm: RealmModel?): MutableList<UserModel> {
+    override fun getUsers(realm: RealmModel): MutableList<UserModel> {
         logger.info("getUsers() 1")
-        TODO("Not yet implemented")
+
+        val getUsers = storageProviderUseCaseBuilder.newGetUsers()
+        return getUsers.execute(GetUsers.RequestUsers(realm)).users
+            .toUserAdapter(session, realm, model)
+            .toMutableList()
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun getUsers(realm: RealmModel?, firstResult: Int, maxResults: Int): MutableList<UserModel> {
+    override fun getUsers(realm: RealmModel, firstResult: Int, maxResults: Int): MutableList<UserModel> {
         logger.info("getUsers() 2")
-        TODO("Not yet implemented")
+
+        val getUsers = storageProviderUseCaseBuilder.newGetUsers()
+        return getUsers.execute(
+            GetUsers.RequestPageUsers(
+                realm = realm,
+                firstResult = firstResult,
+                maxResults = maxResults,
+            )
+        ).users
+            .toUserAdapter(session, realm, model)
+            .toMutableList()
     }
 
-    override fun searchForUser(search: String?, realm: RealmModel?): MutableList<UserModel> {
+    override fun searchForUser(search: String?, realm: RealmModel): MutableList<UserModel> {
         logger.info("searchForUser()")
-        return mutableListOf()
+
+        val searchForUser = storageProviderUseCaseBuilder.newSearchForUser()
+        val request = SearchForUser.RequestBySearchString(
+            realm = realm,
+            search = search
+        )
+
+        return searchForUser.search(request).users
+            .toUserAdapter(session, realm, model)
+            .toMutableList()
     }
 
-    @Deprecated("Deprecated in Java")
     override fun searchForUser(
         search: String?,
-        realm: RealmModel?,
+        realm: RealmModel,
         firstResult: Int,
         maxResults: Int
     ): MutableList<UserModel> {
         logger.info("searchForUser() 1")
-        TODO("Not yet implemented")
+
+        val searchForUser = storageProviderUseCaseBuilder.newSearchForUser()
+        val request = SearchForUser.RequestPageBySearchString(
+            realm = realm,
+            search = search,
+            firstResult = firstResult,
+            maxResults = maxResults
+        )
+
+        return searchForUser.search(request).users
+            .toUserAdapter(session, realm, model)
+            .toMutableList()
     }
 
-    override fun searchForUser(params: MutableMap<String, String>?, realm: RealmModel?): MutableList<UserModel> {
+    override fun searchForUser(params: MutableMap<String, String>, realm: RealmModel): MutableList<UserModel> {
         logger.info("searchForUser() 2")
-        return mutableListOf()
+
+        val searchForUser = storageProviderUseCaseBuilder.newSearchForUser()
+        val request = SearchForUser.RequestByParams(
+            realm = realm,
+            params = params
+        )
+
+        return searchForUser.search(request).users
+            .toUserAdapter(session, realm, model)
+            .toMutableList()
     }
 
-    @Deprecated("Deprecated in Java", ReplaceWith("mutableListOf()"))
     override fun searchForUser(
-        params: MutableMap<String, String>?,
-        realm: RealmModel?,
+        params: MutableMap<String, String>,
+        realm: RealmModel,
         firstResult: Int,
         maxResults: Int
     ): MutableList<UserModel> {
         logger.info("searchForUser() 3")
-        userDao.findUserById(UUID.randomUUID())
-        return mutableListOf()
+
+        val searchForUser = storageProviderUseCaseBuilder.newSearchForUser()
+        val request = SearchForUser.RequestPageByParams(
+            realm = realm,
+            params = params,
+            firstResult = firstResult,
+            maxResults = maxResults
+        )
+
+        return searchForUser.search(request).users
+            .toUserAdapter(session, realm, model)
+            .toMutableList()
     }
 
     override fun getGroupMembers(realm: RealmModel?, group: GroupModel?): MutableList<UserModel> {
@@ -114,16 +203,27 @@ class BuketStorageProvider(
         maxResults: Int
     ): MutableList<UserModel> {
         logger.info("getGroupMembers() 2")
+
         return mutableListOf()
     }
 
     override fun searchForUserByUserAttribute(
-        attrName: String?,
-        attrValue: String?,
-        realm: RealmModel?
+        attrName: String,
+        attrValue: String,
+        realm: RealmModel
     ): MutableList<UserModel> {
         logger.info("searchForUserByUserAttribute()")
-        return mutableListOf()
+
+        val searchForUser = storageProviderUseCaseBuilder.newSearchForUser()
+        val request = SearchForUser.RequestPageByUserAttribute(
+            realm = realm,
+            attrName = attrName,
+            attrValue = attrValue,
+        )
+
+        return searchForUser.search(request).users
+            .toUserAdapter(session, realm, model)
+            .toMutableList()
     }
 
     companion object {
