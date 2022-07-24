@@ -14,6 +14,7 @@ import org.keycloak.storage.StorageId
 import org.keycloak.storage.UserStorageProvider
 import org.keycloak.storage.user.UserLookupProvider
 import org.keycloak.storage.user.UserQueryProvider
+import org.keycloak.storage.user.UserRegistrationProvider
 import studio.buket.keycloak.model.toUserAdapter
 import studio.buket.keycloak.service.GetUsers
 import studio.buket.keycloak.service.SearchForUser
@@ -23,8 +24,13 @@ import studio.buket.keycloak.service.ValidatePassword
 class BuketStorageProvider(
     private val model: ComponentModel,
     private val session: KeycloakSession,
-    private val storageProviderUseCaseBuilder: StorageProviderUseCaseBuilder,
-) : UserStorageProvider, UserLookupProvider, CredentialInputValidator, UserQueryProvider {
+    private val storageProviderUseCaseBuilder: StorageProviderUseCaseBuilder
+) : UserStorageProvider,
+    UserLookupProvider,
+    CredentialInputValidator,
+    UserQueryProvider,
+//    CredentialInputUpdater,
+    UserRegistrationProvider {
 
     override fun close() {
         logger.info("close()")
@@ -48,7 +54,7 @@ class BuketStorageProvider(
     }
 
     override fun getUserByEmail(email: String, realm: RealmModel): UserModel? {
-        logger.info("getUserByEmail()")
+        logger.info("getUserByEmail(): [$email]")
 
         val getUserByEmail = storageProviderUseCaseBuilder.newGetUserByEmail()
         return getUserByEmail.execute(email)
@@ -114,7 +120,7 @@ class BuketStorageProvider(
             GetUsers.RequestPageUsers(
                 realm = realm,
                 firstResult = firstResult,
-                maxResults = maxResults,
+                maxResults = maxResults
             )
         ).users
             .toUserAdapter(session, realm, model)
@@ -218,12 +224,24 @@ class BuketStorageProvider(
         val request = SearchForUser.RequestPageByUserAttribute(
             realm = realm,
             attrName = attrName,
-            attrValue = attrValue,
+            attrValue = attrValue
         )
 
         return searchForUser.search(request).users
             .toUserAdapter(session, realm, model)
             .toMutableList()
+    }
+
+    override fun addUser(realm: RealmModel?, username: String?): UserModel? {
+//        TODO("Not yet implemented")
+        logger.info("addUser() [$username]")
+        return null
+    }
+
+    override fun removeUser(realm: RealmModel?, user: UserModel?): Boolean {
+//        TODO("Not yet implemented")
+        logger.info("removeUser() [${user?.username}]")
+        return false
     }
 
     companion object {

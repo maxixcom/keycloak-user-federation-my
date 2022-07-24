@@ -10,7 +10,7 @@ class GetUserByEmailImpl(
 ) : GetUserByEmail {
     override fun execute(email: String): User? {
         return transaction(db) {
-            User.find { Users.email eq email }.single()
+            User.find { Users.email eq email }.singleOrNull()
         }
     }
 }
