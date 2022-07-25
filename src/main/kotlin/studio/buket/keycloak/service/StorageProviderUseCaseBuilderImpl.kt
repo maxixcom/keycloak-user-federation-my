@@ -10,4 +10,7 @@ class StorageProviderUseCaseBuilderImpl(
     override fun newSearchForUser(): SearchForUser = SearchForUserImpl(db)
     override fun newGetUsers(): GetUsers = GetUsersImpl(db)
     override fun newValidatePassword(): ValidatePassword = ValidatePasswordImpl(db)
+    override fun newAddUser(): AddUser = AddUserImpl(db)
+    override fun newRemoveUser(): RemoveUser = RemoveUserImpl(db)
+    override fun newDisableCredentialTypeImpl(): DisableCredentialType = DisableCredentialTypeImpl(db)
 }

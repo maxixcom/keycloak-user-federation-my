@@ -3,6 +3,7 @@ package studio.buket.keycloak
 import org.jboss.logging.Logger
 import org.keycloak.component.ComponentModel
 import org.keycloak.credential.CredentialInput
+import org.keycloak.credential.CredentialInputUpdater
 import org.keycloak.credential.CredentialInputValidator
 import org.keycloak.models.GroupModel
 import org.keycloak.models.KeycloakSession
@@ -26,10 +27,11 @@ class BuketStorageProvider(
     private val session: KeycloakSession,
     private val storageProviderUseCaseBuilder: StorageProviderUseCaseBuilder
 ) : UserStorageProvider,
+//    UserFederatedStorageProvider,
     UserLookupProvider,
     CredentialInputValidator,
     UserQueryProvider,
-//    CredentialInputUpdater,
+    CredentialInputUpdater,
     UserRegistrationProvider {
 
     override fun close() {
@@ -232,16 +234,47 @@ class BuketStorageProvider(
             .toMutableList()
     }
 
-    override fun addUser(realm: RealmModel?, username: String?): UserModel? {
-//        TODO("Not yet implemented")
+    override fun addUser(realm: RealmModel, username: String?): UserModel? {
         logger.info("addUser() [$username]")
-        return null
+        return username?.let {
+            try {
+                val addUser = storageProviderUseCaseBuilder.newAddUser()
+                addUser.execute(username)
+                    .toUserAdapter(session, realm, model)
+            } catch (e: Exception) {
+                logger.error(e)
+                null
+            }
+        }
     }
 
-    override fun removeUser(realm: RealmModel?, user: UserModel?): Boolean {
-//        TODO("Not yet implemented")
+    override fun removeUser(realm: RealmModel, user: UserModel): Boolean {
         logger.info("removeUser() [${user?.username}]")
-        return false
+        return try {
+            val removeUser = storageProviderUseCaseBuilder.newRemoveUser()
+            removeUser.execute(user.username)
+            true
+        } catch (e: Exception) {
+            logger.error(e)
+            return false
+        }
+    }
+
+    override fun updateCredential(realm: RealmModel?, user: UserModel?, input: CredentialInput?): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun disableCredentialType(realm: RealmModel, user: UserModel, credentialType: String) {
+        logger.info("disableCredentialType() [${user.username}] [$credentialType]")
+        val disableCredentialType = storageProviderUseCaseBuilder.newDisableCredentialTypeImpl()
+        disableCredentialType.execute(user, credentialType)
+    }
+
+    override fun getDisableableCredentialTypes(realm: RealmModel, user: UserModel?): MutableSet<String> {
+        logger.info("getDisableableCredentialTypes() [${user?.username}]")
+        return mutableSetOf(
+            PasswordCredentialModel.TYPE
+        )
     }
 
     companion object {
